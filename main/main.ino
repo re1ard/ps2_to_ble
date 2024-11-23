@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <BleKeyboard.h>
+#include "BleKeyboard.h"
 #include <unordered_set>
 #include <fabgl.h>
 
@@ -27,6 +27,10 @@ uint8_t convertToKeyCode(VirtualKey virtualKey);
 #define LED_RED 26
 #define LED_GREEN 27
 #define LED_BLUE 25
+
+static bool numlockLed = false;
+static bool capslockLed = false;
+static bool scrolllockLed = false;
 
 void setup() 
 {
@@ -295,6 +299,9 @@ uint8_t convertToKeyCode(VirtualKey virtualKey)
             return KEY_TAB - 0x88;
         case VK_SPACE:
             return 0x2C;
+        case VK_EQUALS:
+        case VK_PLUS:
+            return 0x2E;
         case VK_MINUS:
         case VK_UNDERSCORE:
             return 0x2D;
@@ -325,13 +332,17 @@ uint8_t convertToKeyCode(VirtualKey virtualKey)
         case VK_SLASH:
         case VK_QUESTION:
             return 0x38;
-        case VK_CAPSLOCK:
+        case VK_CAPSLOCK: {
+            //capslockLed = !capslockLed;
+            //keyboard->setLEDs(numlockLed, capslockLed, scrolllockLed);
             return 0x39;
+        }
 
         case VK_F1...VK_F12:
             return 0x3A + (virtualKey - VK_F1);
 
         case VK_SYSREQ:
+        case VK_PRINTSCREEN:
             return 0x46;
         case VK_SCROLLLOCK:
             return 0x47;
