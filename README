@@ -2,3 +2,33 @@ Fork https://github.com/abelykh0/esp32-BLEKeyboard
 Used: FabGL & ESP32 BLE Keyboard
 
 PS2 Keyboard to Bluetooth BLE with esp32
+
+Features:
+- All keyboard keys it's work's (maybe, but i use all, his 'works').
+- Full scheme to build from any ps/2 keyboard.
+- Extra scheme to battery level report.
+- NumLock, CapsLock, ScrollLock led work, but not corretly. (Works after add battery lvl scheme).
+- GAMERS RGB LED to response keyboard status
+
+Used components:
+(main to works)
+- PS/2 Keyboard (keyboard*)
+- esp32 wroom 32 (brain)
+- tp4056 (battery charger)
+- DC-DC 3.7v to 5v CKCS BS01 (power up)
+- Li-Po Battery 3.7v 4100mAh
+- 2x2K, 2x150 resistors (logic level transform)
+
+(battery level support)
+- PC817 Photocoupler
+- 330, 27K, 100K resistors
+
+(rgb led support)
+- RGB Led diod
+- 330 resistors (on scheme him lost, insert in split LED- and ESP32 GND)
+
+(extra)
+- type-c female connector
+- RED Led, Green Led (to tp4056 charge status)
+- 1pos switch
+- Straight hands, not from the ass
