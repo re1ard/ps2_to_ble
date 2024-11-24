@@ -5,6 +5,8 @@
 #include <fabgl.h>
 
 //#define DEBUG 1
+#define BAT_SUPPORT 1
+#define EXTERNAL_RGB_LED_SUPPORT 1
 
 using namespace fabgl;
 
@@ -24,19 +26,40 @@ static std::map<VirtualKey, VirtualKey> _virtualKeyMap;
 
 uint8_t convertToKeyCode(VirtualKey virtualKey);
 
-#define LED_RED 26
-#define LED_GREEN 27
-#define LED_BLUE 25
+#if defined (EXTERNAL_RGB_LED_SUPPORT)
+  #define LED_RED 26
+  #define LED_GREEN 27
+  #define LED_BLUE 25
+#endif
 
-static bool numlockLed = false;
-static bool capslockLed = false;
-static bool scrolllockLed = false;
+#if defined (BAT_SUPPORT)
+  #define BAT_ANALOG 15
+  float lastBatteryStatusPublish = -61.0f;
+  void updateBatteryStatus() {
+    if (esp_timer_get_time()/1000 - lastBatteryStatusPublish > 60) {
+      uint8_t lvl = map(analogRead(BAT_ANALOG), 0.0f, 4095.0f, 0, 100);
+      bleKeyboard.setBatteryLevel(lvl);
+      lastBatteryStatusPublish = esp_timer_get_time()/1000;
+    }
+  }
+#endif
 
 void setup() 
 {
+    #if defined (EXTERNAL_RGB_LED_SUPPORT)
+      pinMode(LED_RED, OUTPUT);
+      pinMode(LED_GREEN, OUTPUT);
+      pinMode(LED_BLUE, OUTPUT);
+      digitalWrite(LED_RED, HIGH);
+    #endif
+
     #if defined(DEBUG)
       Serial.begin(115200);
       Serial.println("Starting");
+    #endif
+
+    #if defined (BAT_SUPPORT)
+      updateBatteryStatus();
     #endif
 
     bleKeyboard.setName("Chicony KB-5191"); 
@@ -48,17 +71,17 @@ void setup()
       Serial.println("Started");
     #endif
 
-    pinMode(LED_RED, OUTPUT);
-    pinMode(LED_GREEN, OUTPUT);
-    pinMode(LED_BLUE, OUTPUT);
-    digitalWrite(LED_GREEN, HIGH);
-
     keyboard->setLayout(&fabgl::USLayout);
     const KeyboardLayout* layout = keyboard->getLayout();
     for (AltVirtualKeyDef keyDef: layout->alternateVK)
     {
       _virtualKeyMap[keyDef.virtualKey] = keyDef.reqVirtualKey;
     }
+
+    #if defined (EXTERNAL_RGB_LED_SUPPORT)
+      digitalWrite(LED_RED, LOW);
+      digitalWrite(LED_GREEN, HIGH);
+    #endif
 }
 
 static void updateModifiers(VirtualKey virtualKey, bool keyDown)
@@ -165,11 +188,15 @@ void loop()
         if (!bleKeyboard.isConnected())
         {
             connected = false;
+
             #if defined(DEBUG)
               Serial.println("Disconnected");
             #endif
-            digitalWrite(LED_GREEN, HIGH);
-            digitalWrite(LED_BLUE, LOW);
+
+            #if defined (EXTERNAL_RGB_LED_SUPPORT)
+              digitalWrite(LED_GREEN, HIGH);
+              digitalWrite(LED_BLUE, LOW);
+            #endif
         }
     }
     else
@@ -177,11 +204,15 @@ void loop()
         if (bleKeyboard.isConnected())
         {
             connected = true;
+
             #if defined(DEBUG)
               Serial.println("Connected");
             #endif
-            digitalWrite(LED_GREEN, LOW);
-            digitalWrite(LED_BLUE, HIGH);
+
+            #if defined (EXTERNAL_RGB_LED_SUPPORT)
+              digitalWrite(LED_GREEN, LOW);
+              digitalWrite(LED_BLUE, HIGH);
+            #endif
         }
     }
     
@@ -199,6 +230,10 @@ void loop()
     VirtualKey virtualKey = keyboard->getNextVirtualKey(&keyDown);
     updateModifiers(virtualKey, keyDown);
     uint8_t keyCode = convertToKeyCode(virtualKey);
+
+    #if defined (BAT_SUPPORT)
+      updateBatteryStatus();
+    #endif
 
     #if defined(DEBUG)
       Serial.print("After convertToKeyCode: ");
@@ -332,11 +367,8 @@ uint8_t convertToKeyCode(VirtualKey virtualKey)
         case VK_SLASH:
         case VK_QUESTION:
             return 0x38;
-        case VK_CAPSLOCK: {
-            //capslockLed = !capslockLed;
-            //keyboard->setLEDs(numlockLed, capslockLed, scrolllockLed);
+        case VK_CAPSLOCK:
             return 0x39;
-        }
 
         case VK_F1...VK_F12:
             return 0x3A + (virtualKey - VK_F1);
