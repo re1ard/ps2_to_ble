@@ -34,15 +34,19 @@ uint8_t convertToKeyCode(VirtualKey virtualKey);
 
 #if defined (BAT_SUPPORT)
   #define BAT_ANALOG 15
-  float lastBatteryStatusPublish = -61.0f;
+  long lastBatteryStatusPublish = -1;
   void updateBatteryStatus() {
-    if (esp_timer_get_time()/1000 - lastBatteryStatusPublish > 60) {
-      uint8_t lvl = map(analogRead(BAT_ANALOG), 0.0f, 4095.0f, 0, 100);
+    if (millis()/1000 - lastBatteryStatusPublish > 60 || lastBatteryStatusPublish == -1) {
+      //2.6v keyboard is down, 2.6 * 4095 / 3.3
+      uint8_t lvl = map(analogRead(BAT_ANALOG), 3220.0f, 4095.0f, 0, 100);
       bleKeyboard.setBatteryLevel(lvl);
-      lastBatteryStatusPublish = esp_timer_get_time()/1000;
+      lastBatteryStatusPublish = millis()/1000;
     }
   }
 #endif
+
+long lastTouch = 0;
+boolean sleeped = false;
 
 void setup() 
 {
@@ -82,6 +86,8 @@ void setup()
       digitalWrite(LED_RED, LOW);
       digitalWrite(LED_GREEN, HIGH);
     #endif
+
+    lastTouch = millis();
 }
 
 static void updateModifiers(VirtualKey virtualKey, bool keyDown)
@@ -218,11 +224,30 @@ void loop()
     
     if (!connected) 
     {
+        delay(1000);
         return;
     }
 
     if (!keyboard->virtualKeyAvailable())
     {
+        if (!sleeped && millis() - lastTouch > 60 * 1000) {
+          sleeped = true;
+          #if defined (EXTERNAL_RGB_LED_SUPPORT)
+            digitalWrite(LED_RED, HIGH);
+          #endif
+        } else {
+          if (sleeped) {
+            #if defined (EXTERNAL_RGB_LED_SUPPORT)
+              digitalWrite(LED_RED, LOW);
+            #endif
+          }
+          sleeped = false;
+        }
+
+        if (sleeped) {
+          delay(300);
+        } 
+
         return;
     }
 
@@ -274,22 +299,8 @@ void loop()
         }
     }
 
+    lastTouch = millis();
     bleKeyboard.sendReport(&report);
-
-/*
-    char buffer[200];
-    const char *bit_rep[16] = {
-        [ 0] = "0000", [ 1] = "0001", [ 2] = "0010", [ 3] = "0011",
-        [ 4] = "0100", [ 5] = "0101", [ 6] = "0110", [ 7] = "0111",
-        [ 8] = "1000", [ 9] = "1001", [10] = "1010", [11] = "1011",
-        [12] = "1100", [13] = "1101", [14] = "1110", [15] = "1111",
-    };
-    sprintf(buffer, "%s%s %02x %02x %02x %02x %02x %02x", 
-        bit_rep[report.modifiers >> 4], bit_rep[report.modifiers & 0x0F],
-        report.keys[0], report.keys[1], report.keys[2],
-        report.keys[3], report.keys[4], report.keys[5]);
-    Serial.println(buffer);
-*/
 }
 
 uint8_t convertToKeyCode(VirtualKey virtualKey)
