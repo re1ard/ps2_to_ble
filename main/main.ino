@@ -7,6 +7,7 @@
 //#define DEBUG 1
 #define BAT_SUPPORT 1
 #define EXTERNAL_RGB_LED_SUPPORT 1
+#define BASE_SLEEP_SUPPORT 1
 
 using namespace fabgl;
 
@@ -45,8 +46,13 @@ uint8_t convertToKeyCode(VirtualKey virtualKey);
   }
 #endif
 
-long lastTouch = 0;
-boolean sleeped = false;
+#if defined(BASE_SLEEP_SUPPORT)
+  long lastTouch = 0;
+  boolean sleeped = false;
+  #define SLEEPING_DELAY 500 // in milliseconds
+  #define SLEEPING_IF_NOT_CONNECT 1000 // in milliseconds
+  #define GO_TO_SLEEP_AFTER 30 // in seconds
+#endif
 
 void setup() 
 {
@@ -87,7 +93,9 @@ void setup()
       digitalWrite(LED_GREEN, HIGH);
     #endif
 
-    lastTouch = millis();
+    #if defined(BASE_SLEEP_SUPPORT)
+      lastTouch = millis();
+    #endif
 }
 
 static void updateModifiers(VirtualKey virtualKey, bool keyDown)
@@ -224,31 +232,43 @@ void loop()
     
     if (!connected) 
     {
-        delay(1000);
+        #if defined(BASE_SLEEP_SUPPORT)
+          delay(SLEEPING_IF_NOT_CONNECT);
+        #endif
+
         return;
     }
 
     if (!keyboard->virtualKeyAvailable())
     {
-        if (!sleeped && millis() - lastTouch > 60 * 1000) {
+      #if defined(BASE_SLEEP_SUPPORT)
+        if (sleeped) {
+          #if defined (EXTERNAL_RGB_LED_SUPPORT)
+            digitalWrite(LED_GREEN, LOW);
+          #endif
+          delay(SLEEPING_DELAY/2);
+          #if defined (EXTERNAL_RGB_LED_SUPPORT)
+            digitalWrite(LED_GREEN, HIGH);
+          #endif
+          delay(SLEEPING_DELAY/2);
+        } 
+
+        if (millis() - lastTouch > GO_TO_SLEEP_AFTER * 1000) {
           sleeped = true;
           #if defined (EXTERNAL_RGB_LED_SUPPORT)
-            digitalWrite(LED_RED, HIGH);
+              digitalWrite(LED_GREEN, HIGH);
           #endif
         } else {
           if (sleeped) {
             #if defined (EXTERNAL_RGB_LED_SUPPORT)
-              digitalWrite(LED_RED, LOW);
+              digitalWrite(LED_GREEN, LOW);
             #endif
           }
           sleeped = false;
         }
+      #endif
 
-        if (sleeped) {
-          delay(300);
-        } 
-
-        return;
+      return;
     }
 
     bool keyDown;
@@ -299,7 +319,10 @@ void loop()
         }
     }
 
-    lastTouch = millis();
+    #if defined(BASE_SLEEP_SUPPORT)
+      lastTouch = millis();
+    #endif
+
     bleKeyboard.sendReport(&report);
 }
 

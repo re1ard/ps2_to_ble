@@ -9,6 +9,7 @@ Features:
 - Extra scheme to battery level report.
 - NumLock, CapsLock, ScrollLock led work, but not corretly. (Works after add battery lvl scheme).
 - GAMERS RGB LED to response keyboard status
+- Base sleep mode
 
 Used components:
 (main to works)
